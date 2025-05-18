@@ -1,0 +1,41 @@
+# setup_postgresql.yml
+- name: Install and configure PostgreSQL
+  hosts: all
+  become: true
+
+  vars:
+    pg_user: myuser
+    pg_password: mypassword
+    pg_db: mydatabase
+
+  tasks:
+    - name: Install PostgreSQL
+      apt:
+        name: postgresql
+        state: present
+        update_cache: yes
+
+    - name: Ensure PostgreSQL is running
+      systemd:
+        name: postgresql
+        state: started
+        enabled: true
+
+    - name: Set PostgreSQL password for user postgres
+      become_user: postgres
+      postgresql_user:
+        name: postgres
+        password: "{{ pg_password }}"
+
+    - name: Create PostgreSQL user
+      become_user: postgres
+      postgresql_user:
+        name: "{{ pg_user }}"
+        password: "{{ pg_password }}"
+        state: present
+
+    - name: Create PostgreSQL database
+      become_user: postgres
+      postgresql_db:
+        name: "{{ pg_db }}"
+        owner: "{{ pg_user }}"
