@@ -1,0 +1,33 @@
+# create_admin_user.yml
+- name: Create admin user with sudo privileges
+  hosts: all
+  become: true
+
+  vars:
+    username: adminuser
+    ssh_pub_key: "ssh-rsa AAAA..."
+
+  tasks:
+    - name: Create the user
+      user:
+        name: "{{ username }}"
+        shell: /bin/bash
+        groups: sudo
+        append: yes
+        state: present
+
+    - name: Create SSH directory
+      file:
+        path: "/home/{{ username }}/.ssh"
+        state: directory
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: 0700
+
+    - name: Add authorized key
+      copy:
+        content: "{{ ssh_pub_key }}"
+        dest: "/home/{{ username }}/.ssh/authorized_keys"
+        owner: "{{ username }}"
+        group: "{{ username }}"
+        mode: 0600
