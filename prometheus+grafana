@@ -1,0 +1,70 @@
+# setup_monitoring.yml
+- name: Install Prometheus and Grafana
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - software-properties-common
+          - wget
+        state: present
+        update_cache: yes
+
+    - name: Add Grafana APT key
+      apt_key:
+        url: https://packages.grafana.com/gpg.key
+        state: present
+
+    - name: Add Grafana repository
+      apt_repository:
+        repo: "deb https://packages.grafana.com/oss/deb stable main"
+        state: present
+
+    - name: Install Grafana
+      apt:
+        name: grafana
+        state: present
+        update_cache: yes
+
+    - name: Install Prometheus (direct .tar.gz for simplicity)
+      unarchive:
+        src: https://github.com/prometheus/prometheus/releases/download/v2.50.0/prometheus-2.50.0.linux-amd64.tar.gz
+        dest: /opt/
+        remote_src: yes
+
+    - name: Symlink Prometheus binary
+      file:
+        src: /opt/prometheus-2.50.0.linux-amd64/prometheus
+        dest: /usr/local/bin/prometheus
+        state: link
+
+    - name: Create systemd service for Prometheus
+      copy:
+        dest: /etc/systemd/system/prometheus.service
+        content: |
+          [Unit]
+          Description=Prometheus
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/prometheus --config.file=/opt/prometheus-2.50.0.linux-amd64/prometheus.yml
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd and start Prometheus
+      systemd:
+        daemon_reload: yes
+        name: prometheus
+        enabled: yes
+        state: started
+
+    - name: Start Grafana
+      systemd:
+        name: grafana-server
+        enabled: yes
+        state: started
